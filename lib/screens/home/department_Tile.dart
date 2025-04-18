@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:au/models/department.dart';
+import '../department/DepartmentDetailsScreen.dart';
 
 class DepartmentTile extends StatelessWidget {
   const DepartmentTile({super.key, required this.department});
@@ -9,22 +10,24 @@ class DepartmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Material( // Use Material for inkwell effect and better visual integration
-        elevation: 3, // Add a subtle elevation using Material
+      child: Material(
+        elevation: 3,
         borderRadius: BorderRadius.circular(20),
-        child: InkWell( // Use InkWell for tap feedback
+        child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            // يمكنك إضافة تنقل هنا
-            print("Tapped on ${department.name}");
-            // Navigator.push(context, MaterialPageRoute(builder: (context) => DepartmentDetailsScreen(department: department)));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DepartmentCourses(departmentId: department.id),
+              ),
+            );
           },
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              // The boxShadow is now handled by the Material widget
             ),
             child: Row(
               children: [

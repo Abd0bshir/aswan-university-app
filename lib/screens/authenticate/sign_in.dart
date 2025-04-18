@@ -40,7 +40,7 @@ class _signInPageState extends State<signIn> {
         );
         // Navigate to home screen on successful sign-in
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const Home()),
+          MaterialPageRoute(builder: (_) =>  HomeScreen()),
         );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Signed in successfully!')),
@@ -62,7 +62,7 @@ class _signInPageState extends State<signIn> {
     try {
       await _authService.signInAnon(); // Use signInAnon from AuthService
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const Home()),
+        MaterialPageRoute(builder: (_) =>  HomeScreen()),
       );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Signed in as guest!')),

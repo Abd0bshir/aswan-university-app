@@ -1,95 +1,113 @@
-import 'package:au/models/department.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'edit_department_screen.dart'; // استيراد شاشة التعديل
+import 'AddCourse.dart';
+import 'EditCourse.dart';
+import 'EditDepartment.dart';
 
-class DepartmentDetailsScreen extends StatelessWidget {
-  final DocumentSnapshot departmentDoc;
+class DepartmentCourses extends StatelessWidget {
+  final String departmentId;
 
-  const DepartmentDetailsScreen({super.key, required this.departmentDoc, required Department department});
+  const DepartmentCourses({super.key, required this.departmentId});
 
   @override
   Widget build(BuildContext context) {
-    final name = departmentDoc['name'] as String? ?? 'N/A';
-    final studentCount = departmentDoc['studentCount'] as int? ?? 0;
-    final coursesData = departmentDoc['courses'];
-    final List<String> courses = coursesData is List ? List<String>.from(coursesData) : [];
-    final description = departmentDoc['description'] as String? ?? 'No description available.';
+    ThemeData theme = Theme.of(context);
+    const primaryColor = Color(0xFF007C7B); // Define your primary color
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(name),
+        title: const Text("Courses"),
+        backgroundColor: primaryColor, // Apply primary color to AppBar
+        foregroundColor: Colors.white, // Ensure text and icons are visible
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.edit, color: Colors.white), // Ensure icon color contrasts
+            tooltip: 'Edit Department',
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => EditDepartmentScreen(departmentDoc: departmentDoc, department: null,),
+                  builder: (context) => EditDepartment(departmentId: departmentId),
                 ),
-              ).then((value) {
-                // يمكنك هنا إعادة تحميل بيانات القسم إذا تم تعديله
-                if (value == true) {
-                  // قم بتنفيذ منطق إعادة التحميل إذا لزم الأمر
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Department details refreshed.')),
-                  );
-                }
-              });
+              );
             },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              name,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              description,
-              style: const TextStyle(fontSize: 16, color: Colors.black87),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Icon(Icons.people, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text('Students Count: $studentCount', style: const TextStyle(fontSize: 18)),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Text('Courses:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
-            if (courses.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 8.0),
-                child: Text('No courses listed for this department.', style: TextStyle(color: Colors.grey)),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: courses.length,
-                itemBuilder: (context, index) {
-                  final course = courses[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    child: ListTile(
-                      leading: const Icon(Icons.book, color: Color(0xFF007C7B)),
-                      title: Text(course),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('departments')
+            .doc(departmentId)
+            .collection('courses')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: primaryColor)); // Use primary color for indicator
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Error fetching courses: ${snapshot.error}", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)));
+          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text("No courses available", style: theme.textTheme.bodyMedium?.copyWith(color: primaryColor))); // Use primary color for empty state
+          } else {
+            final courses = snapshot.data!.docs.map((doc) {
+              return doc.data() as Map<String, dynamic>;
+            }).toList();
+
+            return ListView.builder(
+              itemCount: courses.length,
+              itemBuilder: (context, index) {
+                final course = courses[index];
+                final courseId = snapshot.data!.docs[index].id; // Get the document ID
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    leading: Icon(Icons.book, color: primaryColor), // Use primary color for leading icon
+                    title: Text(
+                      course['name'] ?? 'Unnamed Course',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500, color: primaryColor), // Use primary color for title
                     ),
-                  );
-                },
-              ),
-          ],
-        ),
+                    subtitle: Text(
+                      course['description'] ?? 'No Description',
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.grey),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditCourse(
+                              departmentId: departmentId,
+                              courseId: courseId, // Pass the course ID
+                              courseData: course, // Pass the course data
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Add Course',
+        backgroundColor: primaryColor, // Apply primary color to FAB
+        foregroundColor: Colors.white, // Ensure icon color contrasts
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddCourse(departmentId: departmentId),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
