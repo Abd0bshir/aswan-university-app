@@ -69,7 +69,7 @@ class _RegisterState extends State<Register> {
           });
         }
 
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) =>  HomeScreen()));
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registered successfully!')));
       } catch (e) {
         setState(() => loading = false);
