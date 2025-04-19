@@ -16,6 +16,19 @@ class _EditDepartmentState extends State<EditDepartment> {
   final _descriptionController = TextEditingController();
   bool _isLoading = false;
 
+  // Consistent color palette
+  final Color primaryColor = const Color(0xFF007C7B); // Teal
+  final Color backgroundColor = const Color(0xFFF4F7F9); // Soft Gray
+  final Color cardColor = Colors.white;
+  final Color successColor = const Color(0xFF4CAF50); // Green
+  final Color errorColor = const Color(0xFFF44336); // Red
+  final Color textColorPrimary = const Color(0xFF212121); // Dark Gray
+  final Color textColorSecondary = Colors.black87;
+  final Color inputFieldFillColor = Colors.grey.shade100;
+  final Color inputFieldBorderColor = Colors.grey.shade400;
+  final Color focusedInputBorderColor = Colors.teal.shade700;
+  final Color loadingIndicatorColor = Colors.teal;
+
   @override
   void initState() {
     super.initState();
@@ -23,9 +36,7 @@ class _EditDepartmentState extends State<EditDepartment> {
   }
 
   Future<void> _loadDepartmentData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
       var doc = await FirebaseFirestore.instance
           .collection('departments')
@@ -35,23 +46,34 @@ class _EditDepartmentState extends State<EditDepartment> {
       if (doc.exists) {
         _nameController.text = doc['name'] ?? '';
         _descriptionController.text = doc['description'] ?? '';
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text("⚠️ Department data not found!", style: TextStyle(color: Colors.white)),
+              backgroundColor: errorColor,
+            ),
+          );
+          Navigator.pop(context);
+        }
       }
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error loading department data: $error")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(" Error loading data: $error", style: TextStyle(color: Colors.white)),
+            backgroundColor: errorColor,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _updateDepartment() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
       try {
         await FirebaseFirestore.instance
             .collection('departments')
@@ -60,74 +82,153 @@ class _EditDepartmentState extends State<EditDepartment> {
           'name': _nameController.text.trim(),
           'description': _descriptionController.text.trim(),
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Department updated successfully!")),
-        );
-        Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text("✅ Department updated successfully!", style: TextStyle(color: Colors.white)),
+              backgroundColor: successColor,
+            ),
+          );
+          Navigator.pop(context);
+        }
       } catch (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error updating department: $error")),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("❌ Error updating: $error", style: TextStyle(color: Colors.white)), backgroundColor: errorColor),
+          );
+        }
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    IconData? icon,
+    int maxLines = 1,
+    TextInputAction? textInputAction,
+    FocusNode? focusNode,
+    void Function(String)? onFieldSubmitted,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      validator: (value) =>
+      value!.trim().isEmpty ? "Please enter $label" : null,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: textColorSecondary),
+        prefixIcon: icon != null ? Icon(icon, color: primaryColor) : null,
+        filled: true,
+        fillColor: inputFieldFillColor,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: inputFieldBorderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: focusedInputBorderColor, width: 1.8),
+        ),
+      ),
+      textInputAction: textInputAction,
+      focusNode: focusNode,
+      onFieldSubmitted: onFieldSubmitted,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    ThemeData theme = Theme.of(context);
-    const primaryColor = Color(0xFF007C7B);
+    final nameFocusNode = FocusNode();
+    final descriptionFocusNode = FocusNode();
 
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text("Edit Department"),
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 1, // Add a subtle shadow
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: primaryColor))
-          : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: "Department Name",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                validator: (value) =>
-                value!.isEmpty ? "Enter department name" : null,
+          ? Center(child: CircularProgressIndicator(color: loadingIndicatorColor))
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Card(
+          elevation: 3,
+          color: cardColor, // Explicitly set card color
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    "Update Department Info",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: textColorPrimary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 30),
+                  _buildTextField(
+                    label: "Department Name",
+                    controller: _nameController,
+                    icon: Icons.apartment_outlined,
+                    textInputAction: TextInputAction.next,
+                    focusNode: nameFocusNode,
+                    onFieldSubmitted: (_) =>
+                        FocusScope.of(context).requestFocus(descriptionFocusNode),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    label: "Description",
+                    controller: _descriptionController,
+                    icon: Icons.description_outlined,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.done,
+                    focusNode: descriptionFocusNode,
+                    onFieldSubmitted: (_) => _updateDepartment(),
+                  ),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _updateDepartment,
+                      icon: _isLoading
+                          ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                          : const Icon(Icons.save_alt_rounded),
+                      label: Text(
+                        _isLoading ? "Saving..." : "Update Department",
+                        style: const TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 2, // Add a subtle shadow
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: "Description",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                validator: (value) =>
-                value!.isEmpty ? "Enter department description" : null,
-                maxLines: 3,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _updateDepartment,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text("Update Department", style: TextStyle(fontSize: 16)),
-              ),
-            ],
+            ),
           ),
         ),
       ),
