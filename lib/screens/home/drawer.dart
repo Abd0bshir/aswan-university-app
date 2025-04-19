@@ -18,6 +18,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
   Map<String, dynamic>? userData;
   bool loading = true;
 
+  final Color primaryColor = const Color(0xFF007C7B);
+
   @override
   void initState() {
     super.initState();
@@ -28,11 +30,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     setState(() => loading = true);
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       setState(() {
         userData = doc.data() as Map<String, dynamic>?;
         loading = false;
@@ -43,120 +41,120 @@ class _CustomDrawerState extends State<CustomDrawer> {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child:
-          loading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                children: [
-                  UserAccountsDrawerHeader(
-                    accountName: Text(
-                      "${userData?['firstName'] ?? 'First'} ${userData?['lastName'] ?? 'Last'}",
-                    ),
-                    accountEmail: Text(
-                      userData?['email'] ?? 'email@example.com',
-                    ),
-                    currentAccountPicture: const CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Color(0xFF007C7B),
-                      ),
-                    ),
-                    decoration: const BoxDecoration(color: Color(0xFF007C7B)),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.person),
-                    title: const Text("Profile"),
-                    onTap: () async {
-                      final updated = await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const Profile()),
-                      );
-                      if (updated == true) {
-                        await fetchUserData(); // لو اتغيرت البيانات، نعيد تحميلها
-                      }
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.settings),
-                    title: const Text("Settings"),
-                    onTap: () {},
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.book),
-                    title: const Text("Courses"),
-                    onTap: () async {
-                      if (userData != null) {
-                        final departmentName =
-                            userData?['department'] ??
-                            ''; // Get the department name
-                        if (departmentName.isNotEmpty) {
-                          // Query Firestore to find the department document with this name
-                          final querySnapshot =
-                              await FirebaseFirestore.instance
-                                  .collection('departments')
-                                  .where('name', isEqualTo: departmentName)
-                                  .limit(
-                                    1,
-                                  ) // Limit to one document since names should be unique
-                                  .get();
-
-                          if (querySnapshot.docs.isNotEmpty) {
-                            // Navigate to the DepartmentCourses page
-                            final departmentId = querySnapshot.docs.first.id;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (_) => DepartmentCourses(
-                                      departmentId: departmentId,
-                                    ),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "No department found with the name '$departmentName'",
-                                ),
-                              ),
-                            );
-                          }
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                "User does not have an assigned department",
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.schedule),
-                    title: const Text("Schedule"),
-                    onTap: () {},
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.grade),
-                    title: const Text("Grades"),
-                    onTap: () {},
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text("Logout"),
-                    onTap: () async {
-                      await widget.authService.signOut();
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/', (route) => false);
-                    },
-                  ),
-                ],
+      child: loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: Text(
+              "${userData?['firstName'] ?? 'First'} ${userData?['lastName'] ?? 'Last'}",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            accountEmail: Text(
+              userData?['email'] ?? 'email@example.com',
+              style: const TextStyle(fontSize: 14),
+            ),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(
+                Icons.person,
+                size: 40,
+                color: Color(0xFF007C7B),
               ),
+            ),
+            decoration: BoxDecoration(
+              color: primaryColor,
+              gradient: LinearGradient(
+                colors: [primaryColor, Colors.teal.shade700],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          _buildDrawerItem(
+            icon: Icons.person,
+            label: 'Profile',
+            onTap: () async {
+              final updated = await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const Profile()),
+              );
+              if (updated == true) {
+                await fetchUserData();
+              }
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.book,
+            label: 'Courses',
+            onTap: () => _navigateToCourses(context),
+          ),
+          const Divider(),
+          _buildDrawerItem(
+            icon: Icons.logout,
+            label: 'Logout',
+            iconColor: Colors.red[600],
+            onTap: () async {
+              await widget.authService.signOut();
+              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? iconColor,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? primaryColor),
+      title: Text(
+        label,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: onTap,
+    );
+  }
+
+  void _navigateToCourses(BuildContext context) async {
+    if (userData == null) return;
+    final departmentName = userData?['department'] ?? '';
+    if (departmentName.isEmpty) {
+      _showMessage("User does not have an assigned department");
+      return;
+    }
+
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('departments')
+        .where('name', isEqualTo: departmentName)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      final departmentId = querySnapshot.docs.first.id;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DepartmentCourses(departmentId: departmentId),
+        ),
+      );
+    } else {
+      _showMessage("No department found with the name '$departmentName'");
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red[400],
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }
